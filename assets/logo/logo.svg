@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 80" width="300" height="80" direction="ltr">
+  <title>الدار العقارية</title>
+  <!-- Mark (right side, RTL lockup) -->
+  <g transform="translate(228 8)">
+    <rect width="64" height="64" rx="14" fill="#0b3d2e"/>
+    <path fill="#c9a35c" fill-rule="evenodd" d="
+      M15 24.5 L18 17 L21 24.5 Z M22 24.5 L25 17 L28 24.5 Z M29 24.5 L32 17 L35 24.5 Z M36 24.5 L39 17 L42 24.5 Z M43 24.5 L46 17 L49 24.5 Z
+      M15 26 H49 V50 H15 Z
+      M17.5 28 H22.5 L20 30.5 Z M24.5 28 H29.5 L27 30.5 Z M34.5 28 H39.5 L37 30.5 Z M41.5 28 H46.5 L44 30.5 Z
+      M27 50 V41.5 a5 5 0 0 1 10 0 V50 Z
+      M19.5 39 L22.5 34 L25.5 39 Z
+      M38.5 39 L41.5 34 L44.5 39 Z"/>
+    <path d="M10 53.5 H54" stroke="#c9a35c" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  <!-- Wordmark (Tajawal; right-aligned against the mark) -->
+  <text x="214" y="44" text-anchor="end" direction="ltr" font-family="Tajawal, 'Segoe UI', Tahoma, sans-serif" font-size="34" font-weight="900" fill="#0b3d2e">الدار <tspan fill="#9c7a36">العقارية</tspan></text>
+  <text x="214" y="66" text-anchor="end" direction="ltr" font-family="Tajawal, 'Segoe UI', Tahoma, sans-serif" font-size="11.5" font-weight="700" letter-spacing="3.2" fill="#5f6462">AL DAR REAL ESTATE</text>
+</svg>

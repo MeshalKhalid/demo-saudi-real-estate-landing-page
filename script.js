@@ -1,123 +1,233 @@
+// ===== Config =====
+const WHATSAPP_NUMBER = '966500000000';
+
+function waLink(text) {
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
+}
+
 // ===== Mobile menu toggle =====
+const header = document.getElementById('header');
 const menuToggle = document.getElementById('menuToggle');
 const mainNav = document.getElementById('mainNav');
 
+function setMenu(open) {
+  mainNav.classList.toggle('open', open);
+  menuToggle.classList.toggle('active', open);
+  menuToggle.setAttribute('aria-expanded', String(open));
+  menuToggle.setAttribute('aria-label', open ? 'إغلاق القائمة' : 'فتح القائمة');
+}
+
 menuToggle.addEventListener('click', () => {
-  mainNav.classList.toggle('open');
-  menuToggle.classList.toggle('active');
+  setMenu(!mainNav.classList.contains('open'));
 });
 
-// Close mobile menu when a link is clicked
-document.querySelectorAll('.main-nav a').forEach(link => {
-  link.addEventListener('click', () => {
-    mainNav.classList.remove('open');
-  });
+// Close mobile menu on link click, outside click, or Escape
+mainNav.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => setMenu(false));
+});
+
+document.addEventListener('click', (e) => {
+  if (mainNav.classList.contains('open') && !header.contains(e.target)) setMenu(false);
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && mainNav.classList.contains('open')) {
+    setMenu(false);
+    menuToggle.focus();
+  }
 });
 
 // ===== Active nav link on scroll =====
-const sections = document.querySelectorAll('section[id]');
-const navLinks = document.querySelectorAll('.main-nav a');
+const navLinks = mainNav.querySelectorAll('a');
 
-function setActiveLink() {
-  const scrollY = window.pageYOffset;
-  sections.forEach(section => {
-    const sectionHeight = section.offsetHeight;
-    const sectionTop = section.offsetTop - 120;
-    const sectionId = section.getAttribute('id');
-    const link = document.querySelector(`.main-nav a[href="#${sectionId}"]`);
-    if (!link) return;
-    if (scrollY > sectionTop && scrollY <= sectionTop + sectionHeight) {
-      navLinks.forEach(l => l.classList.remove('active'));
-      link.classList.add('active');
-    }
+function setActiveLink(id) {
+  navLinks.forEach(link => {
+    const isActive = link.getAttribute('href') === `#${id}`;
+    link.classList.toggle('active', isActive);
+    if (isActive) link.setAttribute('aria-current', 'true');
+    else link.removeAttribute('aria-current');
   });
 }
-window.addEventListener('scroll', setActiveLink);
 
-// ===== Back to top button =====
+const sectionObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting && mainNav.querySelector(`a[href="#${entry.target.id}"]`)) {
+      setActiveLink(entry.target.id);
+    }
+  });
+}, { rootMargin: '-45% 0px -50% 0px' });
+
+document.querySelectorAll('main section[id]').forEach(section => sectionObserver.observe(section));
+
+// ===== Header shadow + back to top button =====
 const backToTop = document.getElementById('backToTop');
+let ticking = false;
+
+function onScroll() {
+  const y = window.scrollY;
+  header.classList.toggle('scrolled', y > 10);
+  const showTop = y > 600;
+  backToTop.classList.toggle('show', showTop);
+  backToTop.tabIndex = showTop ? 0 : -1;
+  ticking = false;
+}
 
 window.addEventListener('scroll', () => {
-  if (window.pageYOffset > 400) {
-    backToTop.classList.add('show');
-  } else {
-    backToTop.classList.remove('show');
+  if (!ticking) {
+    requestAnimationFrame(onScroll);
+    ticking = true;
   }
-});
+}, { passive: true });
+onScroll();
 
 backToTop.addEventListener('click', () => {
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo({ top: 0 });
+  document.querySelector('.logo').focus({ preventScroll: true });
 });
 
-// ===== Contact form validation =====
+// ===== Hero video: load only on larger screens without reduced motion =====
+const heroVideo = document.getElementById('heroVideo');
+const canPlayVideo = window.matchMedia('(min-width: 481px)').matches
+  && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+if (heroVideo && canPlayVideo) {
+  heroVideo.src = heroVideo.dataset.src;
+  heroVideo.play().catch(() => { /* autoplay blocked: poster stays visible */ });
+}
+
+// ===== Open-now status (office hours in Riyadh time) =====
+const OPEN_MIN = 9 * 60;
+const CLOSE_MIN = 21 * 60;
+
+function getOpenStatus(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Riyadh', weekday: 'short', hour: 'numeric', minute: 'numeric', hourCycle: 'h23'
+  }).formatToParts(date);
+  const get = type => parts.find(p => p.type === type).value;
+  const day = get('weekday');
+  const mins = Number(get('hour')) * 60 + Number(get('minute'));
+  const isWorkday = day !== 'Fri';
+
+  if (isWorkday && mins >= OPEN_MIN && mins < CLOSE_MIN) {
+    return { open: true, text: 'مفتوح الآن · يغلق 9 مساءً' };
+  }
+  if (isWorkday && mins < OPEN_MIN) {
+    return { open: false, text: 'مغلق الآن · يفتح اليوم 9 صباحاً' };
+  }
+  const when = day === 'Thu' ? 'السبت' : 'غداً';
+  return { open: false, text: `مغلق الآن · يفتح ${when} 9 صباحاً` };
+}
+
+function renderOpenStatus() {
+  const status = getOpenStatus();
+  document.querySelectorAll('[data-open-status]').forEach(el => {
+    el.classList.toggle('is-open', status.open);
+    el.classList.toggle('is-closed', !status.open);
+    el.querySelector('.open-text').textContent = status.text;
+  });
+}
+renderOpenStatus();
+setInterval(renderOpenStatus, 60 * 1000);
+
+// ===== WhatsApp links =====
+document.querySelectorAll('[data-wa]').forEach(link => {
+  link.href = waLink(link.dataset.wa);
+});
+
+// Hero intent cards: preselect the matching request type in the form
+document.querySelectorAll('[data-request]').forEach(link => {
+  link.addEventListener('click', () => {
+    const radio = document.querySelector(`input[name="request"][value="${link.dataset.request}"]`);
+    if (radio) radio.checked = true;
+  });
+});
+
+// ===== Footer year =====
+document.getElementById('year').textContent = new Date().getFullYear();
+
+// ===== Contact form → WhatsApp =====
 const form = document.getElementById('contactForm');
 const formSuccess = document.getElementById('formSuccess');
+const waFallback = document.getElementById('waFallback');
+
+// Convert Arabic-Indic digits (٠-٩ and ۰-۹) to Latin and strip spaces/dashes
+function normalizePhone(value) {
+  return value
+    .replace(/[٠-٩]/g, d => d.charCodeAt(0) - 0x0660)
+    .replace(/[۰-۹]/g, d => d.charCodeAt(0) - 0x06F0)
+    .replace(/[\s\-()]/g, '')
+    .replace(/^(\+?966|00966)5/, '05');
+}
+
+const requestLabels = {
+  rent: 'أبحث عن عقار للإيجار',
+  buy: 'أرغب بشراء عقار',
+  owner: 'أرغب بعرض عقاري للبيع أو الإيجار',
+  other: 'استفسار عام'
+};
 
 const validators = {
-  name: value => value.trim().length >= 3,
-  phone: value => /^(05)[0-9]{8}$/.test(value.trim()),
-  email: value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()),
-  subject: value => value.trim().length > 0,
-  message: value => value.trim().length >= 10
+  request: () => Boolean(form.querySelector('input[name="request"]:checked')),
+  name: value => value.trim().length >= 2,
+  phone: value => /^05[0-9]{8}$/.test(normalizePhone(value))
 };
 
 const errorMessages = {
-  name: 'الرجاء إدخال الاسم الكامل (3 أحرف على الأقل)',
-  phone: 'الرجاء إدخال رقم جوال سعودي صحيح (يبدأ بـ 05)',
-  email: 'الرجاء إدخال بريد إلكتروني صحيح',
-  subject: 'الرجاء اختيار نوع الخدمة',
-  message: 'الرجاء كتابة رسالة لا تقل عن 10 أحرف'
+  request: 'الرجاء اختيار نوع الطلب',
+  name: 'الرجاء إدخال الاسم',
+  phone: 'الرجاء إدخال رقم جوال سعودي صحيح (مثال: 0512345678)'
 };
 
-function validateField(field) {
-  const name = field.name;
-  const value = field.value;
-  const formGroup = field.closest('.form-group');
-  const errorEl = document.getElementById(`${name}Error`);
-  const isValid = validators[name] ? validators[name](value) : true;
+function validateField(name) {
+  const field = form.elements[name];
+  const input = field instanceof RadioNodeList ? field[0] : field;
+  const group = input.closest('.form-group');
+  const isValid = validators[name](field.value || '');
 
-  if (!isValid) {
-    formGroup.classList.add('invalid');
-    if (errorEl) errorEl.textContent = errorMessages[name];
-  } else {
-    formGroup.classList.remove('invalid');
-    if (errorEl) errorEl.textContent = '';
-  }
+  group.classList.toggle('invalid', !isValid);
+  if (!(field instanceof RadioNodeList)) field.setAttribute('aria-invalid', String(!isValid));
+  document.getElementById(`${name}Error`).textContent = isValid ? '' : errorMessages[name];
   return isValid;
 }
 
-form.querySelectorAll('input, select, textarea').forEach(field => {
-  field.addEventListener('blur', () => validateField(field));
+['name', 'phone'].forEach(name => {
+  const field = form.elements[name];
+  field.addEventListener('blur', () => { if (field.value) validateField(name); });
   field.addEventListener('input', () => {
-    if (field.closest('.form-group').classList.contains('invalid')) {
-      validateField(field);
-    }
+    if (field.closest('.form-group').classList.contains('invalid')) validateField(name);
   });
+});
+
+form.querySelectorAll('input[name="request"]').forEach(radio => {
+  radio.addEventListener('change', () => validateField('request'));
 });
 
 form.addEventListener('submit', (e) => {
   e.preventDefault();
-  formSuccess.classList.remove('show');
+  formSuccess.hidden = true;
 
-  const fields = form.querySelectorAll('input, select, textarea');
-  let allValid = true;
-
-  fields.forEach(field => {
-    const valid = validateField(field);
-    if (!valid) allValid = false;
-  });
-
-  if (allValid) {
-    formSuccess.classList.add('show');
-    form.reset();
-
-    setTimeout(() => {
-      formSuccess.classList.remove('show');
-    }, 6000);
-  } else {
-    const firstInvalid = form.querySelector('.form-group.invalid');
-    if (firstInvalid) {
-      firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+  const invalid = Object.keys(validators).filter(name => !validateField(name));
+  if (invalid.length) {
+    const first = form.elements[invalid[0]];
+    const target = first instanceof RadioNodeList ? first[0] : first;
+    target.focus({ preventScroll: true });
+    target.closest('.form-group').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
   }
+
+  const data = new FormData(form);
+  const lines = [
+    'مرحباً، طلب جديد من الموقع:',
+    `نوع الطلب: ${requestLabels[data.get('request')]}`,
+    `الاسم: ${data.get('name').trim()}`,
+    `الجوال: ${normalizePhone(data.get('phone'))}`
+  ];
+  if (data.get('city')) lines.push(`المدينة: ${data.get('city')}`);
+  if (data.get('budget').trim()) lines.push(`الميزانية: ${data.get('budget').trim()}`);
+  if (data.get('message').trim()) lines.push(`التفاصيل: ${data.get('message').trim()}`);
+
+  const url = waLink(lines.join('\n'));
+  waFallback.href = url;
+  formSuccess.hidden = false;
+  window.open(url, '_blank', 'noopener');
 });
